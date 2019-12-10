@@ -37,10 +37,8 @@
 #include "cs101_asdu_internal.h"
 
 
-struct sCS101_Master {
-
-    LinkLayer linkLayer;
-
+struct sCS101_Master
+{
     SerialPort serialPort;
 
     struct sLinkLayerParameters linkLayerParameters;
@@ -99,6 +97,8 @@ IBalancedApplicationLayer_GetUserData (void* parameter, Frame frame)
 static bool
 IBalancedApplicationLayer_HandleReceivedData (void* parameter, uint8_t* msg, bool isBroadcast, int userDataStart, int userDataLength)
 {
+    UNUSED_PARAMETER(isBroadcast);
+
     CS101_Master self = (CS101_Master) parameter;
 
     CS101_ASDU asdu = CS101_ASDU_createFromBuffer(&(self->alParameters), msg + userDataStart, userDataLength);
@@ -151,7 +151,8 @@ IPrimaryApplicationLayer_UserData(void* parameter, int slaveAddress, uint8_t* ms
 static void
 IPrimaryApplicationLayer_Timeout (void* parameter, int slaveAddress)
 {
-
+    UNUSED_PARAMETER(parameter);
+    UNUSED_PARAMETER(slaveAddress);
 }
 
 static struct sIPrimaryApplicationLayer cs101UnbalancedAppLayerInterface = {
@@ -165,7 +166,8 @@ static struct sIPrimaryApplicationLayer cs101UnbalancedAppLayerInterface = {
  ********************************************/
 
 CS101_Master
-CS101_Master_create(SerialPort serialPort, LinkLayerParameters llParameters, CS101_AppLayerParameters alParameters, IEC60870_LinkLayerMode linkLayerMode)
+CS101_Master_createEx(SerialPort serialPort, LinkLayerParameters llParameters, CS101_AppLayerParameters alParameters, IEC60870_LinkLayerMode linkLayerMode,
+        int queueSize)
 {
     CS101_Master self = (CS101_Master) GLOBAL_MALLOC(sizeof(struct sCS101_Master));
 
@@ -197,7 +199,7 @@ CS101_Master_create(SerialPort serialPort, LinkLayerParameters llParameters, CS1
                     &(self->linkLayerParameters), &cs101UnbalancedAppLayerInterface, self);
         }
         else {
-            CS101_Queue_initialize(&(self->userDataQueue), CS101_MAX_QUEUE_SIZE);
+            CS101_Queue_initialize(&(self->userDataQueue), queueSize);
 
             self->unbalancedLinkLayer = NULL;
 
@@ -218,6 +220,12 @@ CS101_Master_create(SerialPort serialPort, LinkLayerParameters llParameters, CS1
     }
 
     return self;
+}
+
+CS101_Master
+CS101_Master_create(SerialPort serialPort, LinkLayerParameters llParameters, CS101_AppLayerParameters alParameters, IEC60870_LinkLayerMode linkLayerMode)
+{
+    return CS101_Master_createEx(serialPort, llParameters, alParameters, linkLayerMode, CS101_MAX_QUEUE_SIZE);
 }
 
 void
@@ -294,14 +302,15 @@ CS101_Master_destroy(CS101_Master self)
 void
 CS101_Master_setDIR(CS101_Master self, bool dir)
 {
-    LinkLayer_setDIR(self->linkLayer, dir);
+    if (self->balancedLinkLayer)
+        LinkLayerBalanced_setDIR(self->balancedLinkLayer, dir);
 }
 
 void
 CS101_Master_setOwnAddress(CS101_Master self, int address)
 {
-    if (self->linkLayer)
-        LinkLayer_setAddress(self->linkLayer, address);
+    if (self->balancedLinkLayer)
+        LinkLayerBalanced_setAddress(self->balancedLinkLayer, address);
 }
 
 void

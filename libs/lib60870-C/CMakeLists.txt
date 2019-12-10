@@ -11,7 +11,7 @@ project(lib60870-C)
 ENABLE_TESTING()
 
 set(LIB_VERSION_MAJOR "2")
-set(LIB_VERSION_MINOR "1")
+set(LIB_VERSION_MINOR "2")
 set(LIB_VERSION_PATCH "1")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/third_party/cmake/modules/")

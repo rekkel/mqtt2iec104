@@ -74,6 +74,7 @@ typedef enum {
     M_EP_TD_1 = 38,
     M_EP_TE_1 = 39,
     M_EP_TF_1 = 40,
+    S_IT_TC_1 = 41,
     C_SC_NA_1 = 45,
     C_DC_NA_1 = 46,
     C_RC_NA_1 = 47,
@@ -89,6 +90,19 @@ typedef enum {
     C_SE_TC_1 = 63,
     C_BO_TA_1 = 64,
     M_EI_NA_1 = 70,
+    S_CH_NA_1 = 81,
+    S_RP_NA_1 = 82,
+    S_AR_NA_1 = 83,
+    S_KR_NA_1 = 84,
+    S_KS_NA_1 = 85,
+    S_KC_NA_1 = 86,
+    S_ER_NA_1 = 87,
+    S_US_NA_1 = 90,
+    S_UQ_NA_1 = 91,
+    S_UR_NA_1 = 92,
+    S_UK_NA_1 = 93,
+    S_UA_NA_1 = 94,
+    S_UC_NA_1 = 95,
     C_IC_NA_1 = 100,
     C_CI_NA_1 = 101,
     C_RD_NA_1 = 102,
@@ -573,6 +587,9 @@ BitString32_destroy(BitString32 self);
 BitString32
 BitString32_create(BitString32 self, int ioa, uint32_t value);
 
+BitString32
+BitString32_createEx(BitString32 self, int ioa, uint32_t value, QualityDescriptor quality);
+
 uint32_t
 BitString32_getValue(BitString32 self);
 
@@ -591,6 +608,9 @@ Bitstring32WithCP24Time2a_destroy(Bitstring32WithCP24Time2a self);
 Bitstring32WithCP24Time2a
 Bitstring32WithCP24Time2a_create(Bitstring32WithCP24Time2a self, int ioa, uint32_t value, CP24Time2a timestamp);
 
+Bitstring32WithCP24Time2a
+Bitstring32WithCP24Time2a_createEx(Bitstring32WithCP24Time2a self, int ioa, uint32_t value, QualityDescriptor quality, CP24Time2a timestamp);
+
 CP24Time2a
 Bitstring32WithCP24Time2a_getTimestamp(Bitstring32WithCP24Time2a self);
 
@@ -605,6 +625,9 @@ Bitstring32WithCP56Time2a_destroy(Bitstring32WithCP56Time2a self);
 
 Bitstring32WithCP56Time2a
 Bitstring32WithCP56Time2a_create(Bitstring32WithCP56Time2a self, int ioa, uint32_t value, CP56Time2a timestamp);
+
+Bitstring32WithCP56Time2a
+Bitstring32WithCP56Time2a_createEx(Bitstring32WithCP56Time2a self, int ioa, uint32_t value, QualityDescriptor quality, CP56Time2a timestamp);
 
 CP56Time2a
 Bitstring32WithCP56Time2a_getTimestamp(Bitstring32WithCP56Time2a self);
@@ -1802,6 +1825,7 @@ EndOfInitialization_getCOI(EndOfInitialization self);
  * @{
  */
 
+#define CS101_NOF_DEFAULT 0
 #define CS101_NOF_TRANSPARENT_FILE 1
 #define CS101_NOF_DISTURBANCE_DATA 2
 #define CS101_NOF_SEQUENCES_OF_EVENTS 3

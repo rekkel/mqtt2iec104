@@ -46,8 +46,8 @@ extern "C" {
 #define IEC_60870_5_104_DEFAULT_TLS_PORT 19998
 
 #define LIB60870_VERSION_MAJOR 2
-#define LIB60870_VERSION_MINOR 1
-#define LIB60870_VERSION_PATCH 0
+#define LIB60870_VERSION_MINOR 2
+#define LIB60870_VERSION_PATCH 1
 
 /**
  * \brief lib60870 version information
@@ -303,24 +303,65 @@ CS101_ASDU_setCA(CS101_ASDU self, int ca);
 
 /**
  * \brief Get the type ID of the ASDU
+ *
+ * \return the type ID to identify the ASDU type
  */
 IEC60870_5_TypeID
 CS101_ASDU_getTypeID(CS101_ASDU self);
+
+/**
+ * \brief Set the type ID of the ASDU
+ *
+ * NOTE: Usually it is not required to call this function as the type is determined when the
+ * ASDU is parsed or when a new information object is added with \ref CS101_ASDU_addInformationObject
+ * The function is intended to be used by library extensions of for creating private ASDU types.
+ *
+ * \param typeId the type ID to identify the ASDU type
+ */
+void
+CS101_ASDU_setTypeID(CS101_ASDU self, IEC60870_5_TypeID typeId);
 
 /**
  * \brief Check if the ASDU contains a sequence of consecutive information objects
  *
  * NOTE: in a sequence of consecutive information objects only the first information object address
  * is encoded. The following information objects ahve consecutive information object addresses.
+ *
+ * \return true when the ASDU represents a sequence of consecutive information objects, false otherwise
  */
 bool
 CS101_ASDU_isSequence(CS101_ASDU self);
 
 /**
+ * \brief Set the ASDU to represent a sequence of consecutive information objects
+ *
+ * NOTE: It is not required to use this function when constructing ASDUs as this information is
+ * already provided when calling one of the constructors \ref CS101_ASDU_create or \ref CS101_ASDU_initializeStatic
+ *
+ * \param isSequence specify if the ASDU represents a sequence of consecutive information objects
+ */
+void
+CS101_ASDU_setSequence(CS101_ASDU self, bool isSequence);
+
+/**
  * \brief Get the number of information objects (elements) in the ASDU
+ *
+ * \return the number of information objects/element (valid range 0 - 127)
  */
 int
 CS101_ASDU_getNumberOfElements(CS101_ASDU self);
+
+/**
+ * \brief Set the number of information objects (elements) in the ASDU
+ *
+ * NOTE: Usually it is not required to call this function as the number of elements is set when the
+ * ASDU is parsed or when a new information object is added with \ref CS101_ASDU_addInformationObject
+ * The function is intended to be used by library extensions of for creating private ASDU types.
+ *
+ * \param numberOfElements the number of information objects/element (valid range 0 - 127)
+ */
+void
+CS101_ASDU_setNumberOfElements(CS101_ASDU self, int numberOfElements);
 
 /**
  * \brief Get the information object with the given index
@@ -381,6 +422,41 @@ CS101_ASDU_initializeStatic(CS101_StaticASDU self, CS101_AppLayerParameters para
         bool isTest, bool isNegative);
 
 /**
+ * Get the ASDU payload
+ *
+ * The payload is the ASDU message part after the ASDU header (type ID, VSQ, COT, CASDU)
+ *
+ * \return the ASDU payload buffer
+ */
+uint8_t*
+CS101_ASDU_getPayload(CS101_ASDU self);
+
+/**
+ * \brief Append the provided data to the ASDU payload
+ *
+ * NOTE: Usually it is not required to call this function as the payload is set when the
+ * ASDU is parsed or when a new information object is added with \ref CS101_ASDU_addInformationObject
+ * The function is intended to be only used by library extensions of for creating private ASDU types.
+ *
+ * \param buffer pointer to the payload data to add
+ * \param size number of bytes to append to the payload
+ *
+ * \return true when data has been added, false otherwise
+ */
+bool
+CS101_ASDU_addPayload(CS101_ASDU self, uint8_t* buffer, int size);
+
+/**
+ * Get the ASDU payload buffer size
+ *
+ * The payload is the ASDU message part after the ASDU header (type ID, VSQ, COT, CASDU)
+ *
+ * \return the ASDU payload buffer size
+ */
+int
+CS101_ASDU_getPayloadSize(CS101_ASDU self);
+
+/**
  * \brief Destroy the ASDU object (release all resources)
  */
 void
@@ -389,10 +465,12 @@ CS101_ASDU_destroy(CS101_ASDU self);
 /**
  * \brief add an information object to the ASDU
  *
+ * NOTE: Only information objects of the exact same type can be added to a single ASDU!
+ *
  * \param self ASDU object instance
  * \param io information object to be added
  *
- * \return true when added, false when there not enough space left in the ASDU or IO cannot be added to the sequence because of wrong IOA.
+ * \return true when added, false when there not enough space left in the ASDU or IO cannot be added to the sequence because of wrong IOA, or wrong type.
  */
 bool
 CS101_ASDU_addInformationObject(CS101_ASDU self, InformationObject io);

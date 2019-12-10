@@ -126,6 +126,19 @@ interrogationHandler(void* parameter, IMasterConnection connection, CS101_ASDU a
 
         CS101_ASDU_destroy(newAsdu);
 
+        newAsdu = CS101_ASDU_create(alParams, false, CS101_COT_INTERROGATED_BY_STATION,
+                        0, 1, false, false);
+
+        io = (InformationObject) BitString32_create(NULL, 500, 0xaaaa);
+
+        CS101_ASDU_addInformationObject(newAsdu, io);
+
+        InformationObject_destroy(io);
+
+        IMasterConnection_sendASDU(connection, newAsdu);
+
+        CS101_ASDU_destroy(newAsdu);
+
         IMasterConnection_sendACT_TERM(connection, asdu);
     }
     else {
@@ -212,7 +225,7 @@ main(int argc, char** argv)
 
     /* create a new slave/server instance with default connection parameters and
      * default message queue size */
-    CS104_Slave slave = CS104_Slave_create(100, 100);
+    CS104_Slave slave = CS104_Slave_create(10, 10);
 
     CS104_Slave_setLocalAddress(slave, "0.0.0.0");
 
@@ -221,8 +234,20 @@ main(int argc, char** argv)
      */
     CS104_Slave_setServerMode(slave, CS104_MODE_SINGLE_REDUNDANCY_GROUP);
 
-    /* get the connection parameters - we need them to create correct ASDUs */
+    /* get the connection parameters - we need them to create correct ASDUs -
+     * you can also modify the parameters here when default parameters are not to be used */
     CS101_AppLayerParameters alParams = CS104_Slave_getAppLayerParameters(slave);
+
+    /* when you have to tweak the APCI parameters (t0-t3, k, w) you can access them here */
+    CS104_APCIParameters apciParams = CS104_Slave_getConnectionParameters(slave);
+
+    printf("APCI parameters:\n");
+    printf("  t0: %i\n", apciParams->t0);
+    printf("  t1: %i\n", apciParams->t1);
+    printf("  t2: %i\n", apciParams->t2);
+    printf("  t3: %i\n", apciParams->t3);
+    printf("  k: %i\n", apciParams->k);
+    printf("  w: %i\n", apciParams->w);
 
     /* set the callback handler for the clock synchronization command */
     CS104_Slave_setClockSyncHandler(slave, clockSyncHandler, NULL);

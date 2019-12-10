@@ -206,7 +206,7 @@ main(int argc, char** argv)
     /* Add Ctrl-C handler */
     signal(SIGINT, sigint_handler);
 
-    const char* serialPort = "/dev/ttyUSB1";
+    const char* serialPort = "/dev/ttyUSB2";
 
     if (argc > 1)
         serialPort = argv[1];
@@ -218,7 +218,7 @@ main(int argc, char** argv)
     CS101_Slave slave = CS101_Slave_create(port, NULL, NULL, IEC60870_LINK_LAYER_BALANCED);
 
     CS101_Slave_setLinkLayerAddress(slave, 3);
-    CS101_Slave_setLinkLayerAddressOtherStation(slave, 3);
+    CS101_Slave_setLinkLayerAddressOtherStation(slave, 2);
 
     /* get the application layer parameters - we need them to create correct ASDUs */
     CS101_AppLayerParameters alParameters = CS101_Slave_getAppLayerParameters(slave);

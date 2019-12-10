@@ -1,5 +1,5 @@
 /*
- *  Copyright 2016 MZ Automation GmbH
+ *  Copyright 2016-2019 MZ Automation GmbH
  *
  *  This file is part of lib60870-C
  *
@@ -24,6 +24,7 @@
 #include <stdlib.h>
 
 #include "iec60870_common.h"
+#include "lib60870_internal.h"
 #include "apl_types_internal.h"
 #include "cs101_information_objects.h"
 #include "information_objects_internal.h"
@@ -275,7 +276,16 @@ SinglePointInformation
 SinglePointInformation_getFromBuffer(SinglePointInformation self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    /* TODO check message size */
+    /* check message size */
+    int minSize = startIndex + 1;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
 
     if (self == NULL)
 		self = (SinglePointInformation) GLOBAL_MALLOC(sizeof(struct sSinglePointInformation));
@@ -289,7 +299,7 @@ SinglePointInformation_getFromBuffer(SinglePointInformation self, CS101_AppLayer
             startIndex += parameters->sizeOfIOA; /* skip IOA */
         }
 
-        /* parse SIQ (single point information with qualitiy) */
+        /* parse SIQ (single point information with quality) */
         uint8_t siq = msg [startIndex];
 
         self->value = ((siq & 0x01) == 0x01);
@@ -417,6 +427,17 @@ StepPositionInformation
 StepPositionInformation_getFromBuffer(StepPositionInformation self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 2;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (StepPositionInformation) GLOBAL_MALLOC(sizeof(struct sStepPositionInformation));
 
@@ -460,7 +481,7 @@ StepPositionWithCP56Time2a_encode(StepPositionWithCP56Time2a self, Frame frame, 
     /* timestamp */
     Frame_appendBytes(frame, self->timestamp.encodedValue, 7);
 
-    return false;
+    return true;
 }
 
 struct sInformationObjectVFT stepPositionWithCP56Time2aVFT = {
@@ -524,6 +545,17 @@ StepPositionWithCP56Time2a
 StepPositionWithCP56Time2a_getFromBuffer(StepPositionWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 9;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (StepPositionWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sStepPositionWithCP56Time2a));
 
@@ -634,6 +666,17 @@ StepPositionWithCP24Time2a
 StepPositionWithCP24Time2a_getFromBuffer(StepPositionWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 5;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (StepPositionWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sStepPositionWithCP24Time2a));
 
@@ -649,7 +692,7 @@ StepPositionWithCP24Time2a_getFromBuffer(StepPositionWithCP24Time2a self, CS101_
         /* parse VTI (value with transient state indication) */
         self->vti = msg [startIndex++];
 
-        self->quality = (QualityDescriptor) msg [startIndex];
+        self->quality = (QualityDescriptor) msg [startIndex++];
 
         /* timestamp */
         CP24Time2a_getFromBuffer(&(self->timestamp), msg, msgSize, startIndex);
@@ -732,6 +775,17 @@ DoublePointInformation
 DoublePointInformation_getFromBuffer(DoublePointInformation self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 1;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (DoublePointInformation) GLOBAL_MALLOC(sizeof(struct sDoublePointInformation));
 
@@ -830,6 +884,17 @@ DoublePointWithCP24Time2a
 DoublePointWithCP24Time2a_getFromBuffer(DoublePointWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 4;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (DoublePointWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sDoublePointWithCP24Time2a));
 
@@ -933,6 +998,17 @@ DoublePointWithCP56Time2a
 DoublePointWithCP56Time2a_getFromBuffer(DoublePointWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 8;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (DoublePointWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sDoublePointWithCP56Time2a));
 
@@ -1034,6 +1110,17 @@ SinglePointWithCP24Time2a
 SinglePointWithCP24Time2a_getFromBuffer(SinglePointWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 4;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (SinglePointWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sSinglePointWithCP24Time2a));
 
@@ -1138,6 +1225,17 @@ SinglePointWithCP56Time2a
 SinglePointWithCP56Time2a_getFromBuffer(SinglePointWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 8;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (SinglePointWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sSinglePointWithCP56Time2a));
 
@@ -1180,7 +1278,7 @@ BitString32_encode(BitString32 self, Frame frame, CS101_AppLayerParameters param
 
     InformationObject_encodeBase((InformationObject) self, frame, parameters, isSequence);
 
-    int value = self->value;
+    uint32_t value = self->value;
 
     Frame_setNextByte(frame, (uint8_t) (value % 0x100));
     Frame_setNextByte(frame, (uint8_t) ((value / 0x100) % 0x100));
@@ -1213,6 +1311,12 @@ BitString32_destroy(BitString32 self)
 BitString32
 BitString32_create(BitString32 self, int ioa, uint32_t value)
 {
+	return BitString32_createEx(self, ioa, value, IEC60870_QUALITY_GOOD);
+}
+
+BitString32
+BitString32_createEx(BitString32 self, int ioa, uint32_t value, QualityDescriptor quality)
+{
     if (self == NULL)
          self = (BitString32) GLOBAL_CALLOC(1, sizeof(struct sBitString32));
 
@@ -1220,6 +1324,7 @@ BitString32_create(BitString32 self, int ioa, uint32_t value)
         BitString32_initialize(self);
 
         self->objectAddress = ioa;
+        self->quality = quality;
         self->value = value;
     }
 
@@ -1242,6 +1347,17 @@ BitString32
 BitString32_getFromBuffer(BitString32 self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 5;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (BitString32) GLOBAL_MALLOC(sizeof(struct sBitString32));
 
@@ -1283,7 +1399,7 @@ Bitstring32WithCP24Time2a_encode(Bitstring32WithCP24Time2a self, Frame frame, CS
 
     InformationObject_encodeBase((InformationObject) self, frame, parameters, isSequence);
 
-    int value = self->value;
+    uint32_t  value = self->value;
 
     Frame_setNextByte(frame, (uint8_t) (value % 0x100));
     Frame_setNextByte(frame, (uint8_t) ((value / 0x100) % 0x100));
@@ -1319,6 +1435,12 @@ Bitstring32WithCP24Time2a_destroy(Bitstring32WithCP24Time2a self)
 Bitstring32WithCP24Time2a
 Bitstring32WithCP24Time2a_create(Bitstring32WithCP24Time2a self, int ioa, uint32_t value, CP24Time2a timestamp)
 {
+	return Bitstring32WithCP24Time2a_createEx(self, ioa, value, IEC60870_QUALITY_GOOD, timestamp);
+}
+
+Bitstring32WithCP24Time2a
+Bitstring32WithCP24Time2a_createEx(Bitstring32WithCP24Time2a self, int ioa, uint32_t value, QualityDescriptor quality, CP24Time2a timestamp)
+{
     if (self == NULL)
          self = (Bitstring32WithCP24Time2a) GLOBAL_CALLOC(1, sizeof(struct sBitstring32WithCP24Time2a));
 
@@ -1327,6 +1449,7 @@ Bitstring32WithCP24Time2a_create(Bitstring32WithCP24Time2a self, int ioa, uint32
 
         self->objectAddress = ioa;
         self->value = value;
+        self->quality = quality;
         self->timestamp = *timestamp;
     }
 
@@ -1343,6 +1466,17 @@ Bitstring32WithCP24Time2a
 Bitstring32WithCP24Time2a_getFromBuffer(Bitstring32WithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 8;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (Bitstring32WithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sBitstring32WithCP24Time2a));
 
@@ -1387,7 +1521,7 @@ Bitstring32WithCP56Time2a_encode(Bitstring32WithCP56Time2a self, Frame frame, CS
 
     InformationObject_encodeBase((InformationObject) self, frame, parameters, isSequence);
 
-    int value = self->value;
+    uint32_t  value = self->value;
 
     Frame_setNextByte(frame, (uint8_t) (value % 0x100));
     Frame_setNextByte(frame, (uint8_t) ((value / 0x100) % 0x100));
@@ -1423,6 +1557,12 @@ Bitstring32WithCP56Time2a_destroy(Bitstring32WithCP56Time2a self)
 Bitstring32WithCP56Time2a
 Bitstring32WithCP56Time2a_create(Bitstring32WithCP56Time2a self, int ioa, uint32_t value, CP56Time2a timestamp)
 {
+	return Bitstring32WithCP56Time2a_createEx(self, ioa, value, IEC60870_QUALITY_GOOD, timestamp);
+}
+
+Bitstring32WithCP56Time2a
+Bitstring32WithCP56Time2a_createEx(Bitstring32WithCP56Time2a self, int ioa, uint32_t value, QualityDescriptor quality, CP56Time2a timestamp)
+{
     if (self == NULL)
          self = (Bitstring32WithCP56Time2a) GLOBAL_CALLOC(1, sizeof(struct sBitstring32WithCP56Time2a));
 
@@ -1431,6 +1571,7 @@ Bitstring32WithCP56Time2a_create(Bitstring32WithCP56Time2a self, int ioa, uint32
 
         self->objectAddress = ioa;
         self->value = value;
+        self->quality = quality;
         self->timestamp = *timestamp;
     }
 
@@ -1448,6 +1589,17 @@ Bitstring32WithCP56Time2a
 Bitstring32WithCP56Time2a_getFromBuffer(Bitstring32WithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 12;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (Bitstring32WithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sBitstring32WithCP56Time2a));
 
@@ -1597,6 +1749,17 @@ MeasuredValueNormalized
 MeasuredValueNormalized_getFromBuffer(MeasuredValueNormalized self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 3;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueNormalized) GLOBAL_MALLOC(sizeof(struct sMeasuredValueNormalized));
 
@@ -1665,7 +1828,8 @@ ParameterNormalizedValue_getFromBuffer(ParameterNormalizedValue self, CS101_AppL
     MeasuredValueNormalized pvn =
             MeasuredValueNormalized_getFromBuffer(self, parameters, msg, msgSize, startIndex, false);
 
-    pvn->type = P_ME_NA_1;
+    if (pvn)
+        pvn->type = P_ME_NA_1;
 
     return (ParameterNormalizedValue) pvn;
 }
@@ -1751,6 +1915,17 @@ MeasuredValueNormalizedWithoutQuality
 MeasuredValueNormalizedWithoutQuality_getFromBuffer(MeasuredValueNormalizedWithoutQuality self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 2;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
         self = (MeasuredValueNormalizedWithoutQuality) GLOBAL_MALLOC(sizeof(struct sMeasuredValueNormalizedWithoutQuality));
 
@@ -1850,6 +2025,17 @@ MeasuredValueNormalizedWithCP24Time2a
 MeasuredValueNormalizedWithCP24Time2a_getFromBuffer(MeasuredValueNormalizedWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 6;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueNormalizedWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sMeasuredValueNormalizedWithCP24Time2a));
 
@@ -1955,6 +2141,17 @@ MeasuredValueNormalizedWithCP56Time2a
 MeasuredValueNormalizedWithCP56Time2a_getFromBuffer(MeasuredValueNormalizedWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 10;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueNormalizedWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sMeasuredValueNormalizedWithCP56Time2a));
 
@@ -2057,6 +2254,17 @@ MeasuredValueScaled
 MeasuredValueScaled_getFromBuffer(MeasuredValueScaled self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 3;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueScaled) GLOBAL_MALLOC(sizeof(struct sMeasuredValueScaled));
 
@@ -2125,7 +2333,8 @@ ParameterScaledValue_getFromBuffer(ParameterScaledValue self, CS101_AppLayerPara
     MeasuredValueScaled psv =
             MeasuredValueScaled_getFromBuffer(self, parameters, msg, msgSize, startIndex, false);
 
-    psv->type = P_ME_NB_1;
+    if (psv)
+        psv->type = P_ME_NB_1;
 
     return (ParameterScaledValue) psv;
 }
@@ -2207,6 +2416,17 @@ MeasuredValueScaledWithCP24Time2a
 MeasuredValueScaledWithCP24Time2a_getFromBuffer(MeasuredValueScaledWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 6;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueScaledWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sMeasuredValueScaledWithCP24Time2a));
 
@@ -2310,6 +2530,17 @@ MeasuredValueScaledWithCP56Time2a
 MeasuredValueScaledWithCP56Time2a_getFromBuffer(MeasuredValueScaledWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 10;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueScaledWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sMeasuredValueScaledWithCP56Time2a));
 
@@ -2423,6 +2654,17 @@ MeasuredValueShort
 MeasuredValueShort_getFromBuffer(MeasuredValueShort self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 5;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueShort) GLOBAL_MALLOC(sizeof(struct sMeasuredValueShort));
 
@@ -2502,7 +2744,8 @@ ParameterFloatValue_getFromBuffer(ParameterFloatValue self, CS101_AppLayerParame
     ParameterFloatValue psv =
             MeasuredValueShort_getFromBuffer(self, parameters, msg, msgSize, startIndex, false);
 
-    psv->type = P_ME_NC_1;
+    if (psv)
+        psv->type = P_ME_NC_1;
 
     return (ParameterFloatValue) psv;
 }
@@ -2583,6 +2826,17 @@ MeasuredValueShortWithCP24Time2a
 MeasuredValueShortWithCP24Time2a_getFromBuffer(MeasuredValueShortWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 8;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueShortWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sMeasuredValueShortWithCP24Time2a));
 
@@ -2695,6 +2949,17 @@ MeasuredValueShortWithCP56Time2a
 MeasuredValueShortWithCP56Time2a_getFromBuffer(MeasuredValueShortWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 12;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (MeasuredValueShortWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sMeasuredValueShortWithCP56Time2a));
 
@@ -2804,6 +3069,17 @@ IntegratedTotals
 IntegratedTotals_getFromBuffer(IntegratedTotals self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 5;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (IntegratedTotals) GLOBAL_MALLOC(sizeof(struct sIntegratedTotals));
 
@@ -2903,6 +3179,17 @@ IntegratedTotalsWithCP24Time2a
 IntegratedTotalsWithCP24Time2a_getFromBuffer(IntegratedTotalsWithCP24Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 8;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (IntegratedTotalsWithCP24Time2a) GLOBAL_MALLOC(sizeof(struct sIntegratedTotalsWithCP24Time2a));
 
@@ -3005,6 +3292,17 @@ IntegratedTotalsWithCP56Time2a
 IntegratedTotalsWithCP56Time2a_getFromBuffer(IntegratedTotalsWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + 12;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
 		self = (IntegratedTotalsWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sIntegratedTotalsWithCP56Time2a));
 
@@ -3095,8 +3393,16 @@ EventOfProtectionEquipment
 EventOfProtectionEquipment_getFromBuffer(EventOfProtectionEquipment self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 6))
+    /* check message size */
+    int minSize = startIndex + 6;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (EventOfProtectionEquipment) GLOBAL_MALLOC(sizeof(struct sEventOfProtectionEquipment));
@@ -3225,8 +3531,16 @@ EventOfProtectionEquipmentWithCP56Time2a
 EventOfProtectionEquipmentWithCP56Time2a_getFromBuffer(EventOfProtectionEquipmentWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 10))
+    /* check message size */
+    int minSize = startIndex + 10;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (EventOfProtectionEquipmentWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sEventOfProtectionEquipmentWithCP56Time2a));
@@ -3345,8 +3659,16 @@ PackedStartEventsOfProtectionEquipment
 PackedStartEventsOfProtectionEquipment_getFromBuffer(PackedStartEventsOfProtectionEquipment self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 7))
+    /* check message size */
+    int minSize = startIndex + 7;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (PackedStartEventsOfProtectionEquipment) GLOBAL_MALLOC(sizeof(struct sPackedStartEventsOfProtectionEquipment));
@@ -3468,8 +3790,16 @@ PackedStartEventsOfProtectionEquipmentWithCP56Time2a
 PackedStartEventsOfProtectionEquipmentWithCP56Time2a_getFromBuffer(PackedStartEventsOfProtectionEquipmentWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 7))
+    /* check message size */
+    int minSize = startIndex + 11;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (PackedStartEventsOfProtectionEquipmentWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sPackedStartEventsOfProtectionEquipmentWithCP56Time2a));
@@ -3592,8 +3922,16 @@ PackedOutputCircuitInfo
 PackedOutputCircuitInfo_getFromBuffer(PackedOutputCircuitInfo self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 7))
+    /* check message size */
+    int minSize = startIndex + 7;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (PackedOutputCircuitInfo) GLOBAL_MALLOC(sizeof(struct sPackedOutputCircuitInfo));
@@ -3715,8 +4053,16 @@ PackedOutputCircuitInfoWithCP56Time2a
 PackedOutputCircuitInfoWithCP56Time2a_getFromBuffer(PackedOutputCircuitInfoWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 7))
+    /* check message size */
+    int minSize = startIndex + 11;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (PackedOutputCircuitInfoWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sPackedOutputCircuitInfoWithCP56Time2a));
@@ -3821,8 +4167,16 @@ PackedSinglePointWithSCD
 PackedSinglePointWithSCD_getFromBuffer(PackedSinglePointWithSCD self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 5))
+    /* check message size */
+    int minSize = startIndex + 5;
+
+    if (!isSequence)
+        minSize += parameters->sizeOfIOA;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (PackedSinglePointWithSCD) GLOBAL_MALLOC(sizeof(struct sPackedSinglePointWithSCD));
@@ -3932,8 +4286,13 @@ SingleCommand
 SingleCommand_getFromBuffer(SingleCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 1))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (SingleCommand) GLOBAL_MALLOC(sizeof(struct sSingleCommand));
@@ -4025,8 +4384,13 @@ SingleCommandWithCP56Time2a
 SingleCommandWithCP56Time2a_getFromBuffer(SingleCommandWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 1))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 8;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (SingleCommandWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sSingleCommandWithCP56Time2a));
@@ -4131,8 +4495,13 @@ DoubleCommand
 DoubleCommand_getFromBuffer(DoubleCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 1))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (DoubleCommand) GLOBAL_MALLOC(sizeof(struct sDoubleCommand));
@@ -4236,8 +4605,13 @@ DoubleCommandWithCP56Time2a
 DoubleCommandWithCP56Time2a_getFromBuffer(DoubleCommandWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 1))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 8;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (DoubleCommandWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sDoubleCommandWithCP56Time2a));
@@ -4349,8 +4723,13 @@ StepCommand
 StepCommand_getFromBuffer(StepCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 1))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (StepCommand) GLOBAL_MALLOC(sizeof(struct sStepCommand));
@@ -4454,8 +4833,13 @@ StepCommandWithCP56Time2a
 StepCommandWithCP56Time2a_getFromBuffer(StepCommandWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 8))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 8;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (StepCommandWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sStepCommandWithCP56Time2a));
@@ -4571,8 +4955,13 @@ SetpointCommandNormalized
 SetpointCommandNormalized_getFromBuffer(SetpointCommandNormalized self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 3))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 3;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (SetpointCommandNormalized) GLOBAL_MALLOC(sizeof(struct sSetpointCommandNormalized));
@@ -4680,8 +5069,13 @@ SetpointCommandNormalizedWithCP56Time2a
 SetpointCommandNormalizedWithCP56Time2a_getFromBuffer(SetpointCommandNormalizedWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 10))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 10;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (SetpointCommandNormalizedWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sSetpointCommandNormalizedWithCP56Time2a));
@@ -4796,8 +5190,13 @@ SetpointCommandScaled
 SetpointCommandScaled_getFromBuffer(SetpointCommandScaled self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 3))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 3;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (SetpointCommandScaled) GLOBAL_MALLOC(sizeof(struct sSetpointCommandScaled));
@@ -4903,8 +5302,13 @@ SetpointCommandScaledWithCP56Time2a
 SetpointCommandScaledWithCP56Time2a_getFromBuffer(SetpointCommandScaledWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 10))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 10;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (SetpointCommandScaledWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sSetpointCommandScaledWithCP56Time2a));
@@ -5028,8 +5432,13 @@ SetpointCommandShort
 SetpointCommandShort_getFromBuffer(SetpointCommandShort self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 5))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 5;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (SetpointCommandShort) GLOBAL_MALLOC(sizeof(struct sSetpointCommandShort));
@@ -5054,7 +5463,6 @@ SetpointCommandShort_getFromBuffer(SetpointCommandShort self, CS101_AppLayerPara
         valueBytes[1] = msg [startIndex++];
         valueBytes[0] = msg [startIndex++];
 #endif
-
 
         /* QOS - qualifier of setpoint command */
         self->qos = msg[startIndex];
@@ -5148,8 +5556,13 @@ SetpointCommandShortWithCP56Time2a
 SetpointCommandShortWithCP56Time2a_getFromBuffer(SetpointCommandShortWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 10))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 12;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (SetpointCommandShortWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sSetpointCommandShortWithCP56Time2a));
@@ -5264,8 +5677,13 @@ Bitstring32Command
 Bitstring32Command_getFromBuffer(Bitstring32Command self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 4))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 4;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (Bitstring32Command) GLOBAL_MALLOC(sizeof(struct sBitstring32Command));
@@ -5368,8 +5786,13 @@ Bitstring32CommandWithCP56Time2a
 Bitstring32CommandWithCP56Time2a_getFromBuffer(Bitstring32CommandWithCP56Time2a self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA + 11))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 11;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (Bitstring32CommandWithCP56Time2a) GLOBAL_MALLOC(sizeof(struct sBitstring32CommandWithCP56Time2a));
@@ -5458,8 +5881,13 @@ ReadCommand
 ReadCommand_getFromBuffer(ReadCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA))
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 0;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (ReadCommand) GLOBAL_MALLOC(sizeof(struct sReadCommand));
@@ -5536,8 +5964,13 @@ ClockSynchronizationCommand
 ClockSynchronizationCommand_getFromBuffer(ClockSynchronizationCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 7)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 7;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (ClockSynchronizationCommand) GLOBAL_MALLOC(sizeof(struct sClockSynchronizationCommand));
@@ -5620,8 +6053,13 @@ InterrogationCommand
 InterrogationCommand_getFromBuffer(InterrogationCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 1)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
 		self = (InterrogationCommand) GLOBAL_MALLOC(sizeof(struct sInterrogationCommand));
@@ -5704,8 +6142,13 @@ CounterInterrogationCommand
 CounterInterrogationCommand_getFromBuffer(CounterInterrogationCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 1)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (CounterInterrogationCommand) GLOBAL_MALLOC(sizeof(struct sCounterInterrogationCommand));
@@ -5793,8 +6236,13 @@ TestCommand
 TestCommand_getFromBuffer(TestCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 1)
+    /* check message size */
+    int minSize = startIndex + 2;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (TestCommand) GLOBAL_MALLOC(sizeof(struct sTestCommand));
@@ -5878,8 +6326,13 @@ ResetProcessCommand
 ResetProcessCommand_getFromBuffer(ResetProcessCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 1)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (ResetProcessCommand) GLOBAL_MALLOC(sizeof(struct sResetProcessCommand));
@@ -5962,8 +6415,13 @@ DelayAcquisitionCommand
 DelayAcquisitionCommand_getFromBuffer(DelayAcquisitionCommand self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 1)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 2;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
         self = (DelayAcquisitionCommand) GLOBAL_MALLOC(sizeof(struct sDelayAcquisitionCommand));
@@ -6048,6 +6506,14 @@ ParameterActivation
 ParameterActivation_getFromBuffer(ParameterActivation self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
+
     if (self == NULL)
         self = (ParameterActivation) GLOBAL_MALLOC(sizeof(struct sParameterActivation));
 
@@ -6129,8 +6595,13 @@ EndOfInitialization
 EndOfInitialization_getFromBuffer(EndOfInitialization self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 1)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 1;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
        self = (EndOfInitialization) GLOBAL_MALLOC(sizeof(struct sEndOfInitialization));
@@ -6201,9 +6672,9 @@ FileReady_create(FileReady self, int ioa, uint16_t nof, uint32_t lengthOfFile, b
         self->lengthOfFile = lengthOfFile;
 
         if (positive)
-            self->frq = 0x80;
-        else
             self->frq = 0;
+        else
+            self->frq = 0x80;
     }
 
     return self;
@@ -6249,8 +6720,13 @@ FileReady
 FileReady_getFromBuffer(FileReady self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 6)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 6;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
        self = (FileReady) GLOBAL_MALLOC(sizeof(struct sFileReady));
@@ -6387,8 +6863,13 @@ SectionReady
 SectionReady_getFromBuffer(SectionReady self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 7)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 7;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    };
 
     if (self == NULL)
        self = (SectionReady) GLOBAL_MALLOC(sizeof(struct sSectionReady));
@@ -6500,8 +6981,13 @@ FileCallOrSelect
 FileCallOrSelect_getFromBuffer(FileCallOrSelect self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 4)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 4;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
        self = (FileCallOrSelect) GLOBAL_MALLOC(sizeof(struct sFileCallOrSelect));
@@ -6610,8 +7096,13 @@ FileLastSegmentOrSection
 FileLastSegmentOrSection_getFromBuffer(FileLastSegmentOrSection self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 5)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 5;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
        self = (FileLastSegmentOrSection) GLOBAL_MALLOC(sizeof(struct sFileLastSegmentOrSection));
@@ -6628,7 +7119,7 @@ FileLastSegmentOrSection_getFromBuffer(FileLastSegmentOrSection self, CS101_AppL
 
         self->nameOfSection = msg[startIndex++];
 
-        self->lsq = msg[startIndex];
+        self->lsq = msg[startIndex++];
 
         self->chs = msg[startIndex];
     }
@@ -6714,8 +7205,13 @@ FileACK
 FileACK_getFromBuffer(FileACK self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 4)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 4;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     if (self == NULL)
        self = (FileACK) GLOBAL_MALLOC(sizeof(struct sFileACK));
@@ -6823,7 +7319,8 @@ int
 FileSegment_GetMaxDataSize(CS101_AppLayerParameters parameters)
 {
     int maxSize = parameters->maxSizeOfASDU -
-        parameters->sizeOfTypeId - parameters->sizeOfVSQ - parameters->sizeOfCA - parameters->sizeOfCOT;
+        parameters->sizeOfTypeId - parameters->sizeOfVSQ - parameters->sizeOfCA - parameters->sizeOfCOT
+        - parameters->sizeOfIOA - 4;
 
     return maxSize;
 }
@@ -6838,8 +7335,13 @@ FileSegment
 FileSegment_getFromBuffer(FileSegment self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex)
 {
-    if ((msgSize - startIndex) < (parameters->sizeOfIOA) + 4)
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 4;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
         return NULL;
+    }
 
     uint8_t los = msg[startIndex + 3 + parameters->sizeOfIOA];
 
@@ -6923,6 +7425,7 @@ FileDirectory_create(FileDirectory self, int ioa, uint16_t nof, int lengthOfFile
         self->nof = nof;
         self->sof = sof;
         self->creationTime = *creationTime;
+        self->lengthOfFile = lengthOfFile;
     }
 
     return self;
@@ -6987,6 +7490,13 @@ FileDirectory
 FileDirectory_getFromBuffer(FileDirectory self, CS101_AppLayerParameters parameters,
         uint8_t* msg, int msgSize, int startIndex, bool isSequence)
 {
+    /* check message size */
+    int minSize = startIndex + parameters->sizeOfIOA + 13;
+
+    if (minSize > msgSize) {
+        DEBUG_PRINT("invalid ASDU - size too small\n");
+        return NULL;
+    }
 
     if (self == NULL)
        self = (FileDirectory) GLOBAL_MALLOC(sizeof(struct sFileDirectory));

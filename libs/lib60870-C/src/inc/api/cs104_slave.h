@@ -129,6 +129,9 @@ CS104_Slave_create(int maxLowPrioQueueSize, int maxHighPrioQueueSize);
 CS104_Slave
 CS104_Slave_createSecure(int maxLowPrioQueueSize, int maxHighPrioQueueSize, TLSConfiguration tlsConfig);
 
+void
+CS104_Slave_addPlugin(CS104_Slave self, CS101_SlavePlugin plugin);
+
 /**
  * \brief Set the local IP address to bind the server
  * use "0.0.0.0" to bind to all interfaces
@@ -243,13 +246,23 @@ CS101_AppLayerParameters
 CS104_Slave_getAppLayerParameters(CS104_Slave self);
 
 /**
- * \brief State the CS 104 slave. The slave (server) will listen on the configured TCP/IP port
+ * \brief Start the CS 104 slave. The slave (server) will listen on the configured TCP/IP port
+ *
+ * NOTE: This function will start a thread that handles the incoming client connections.
+ * This function requires CONFIG_USE_THREADS = 1 and CONFIG_USE_SEMAPHORES == 1 in lib60870_config.h
  *
  * \param self CS104_Slave instance
  */
 void
 CS104_Slave_start(CS104_Slave self);
 
+/**
+ * \brief Check if slave is running
+ *
+ * \param self CS104_Slave instance
+ *
+ * \return true when slave is running, false otherwise
+ */
 bool
 CS104_Slave_isRunning(CS104_Slave self);
 
@@ -291,6 +304,18 @@ CS104_Slave_stopThreadless(CS104_Slave self);
  */
 void
 CS104_Slave_tick(CS104_Slave self);
+
+/*
+ * \brief Gets the number of ASDU in the low-priority queue
+ *
+ * NOTE: Mode CS104_MODE_CONNECTION_IS_REDUNDANCY_GROUP is not supported by this function.
+ *
+ * \param redGroup the redundancy group to use or NULL for single redundancy mode
+ *
+ * \return the number of ASDU in the low-priority queue
+ */
+int
+CS104_Slave_getNumberOfQueueEntries(CS104_Slave self, CS104_RedundancyGroup redGroup);
 
 /**
  * \brief Add an ASDU to the low-priority queue of the slave (use for periodic and spontaneous messages)

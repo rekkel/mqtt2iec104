@@ -36,6 +36,7 @@
 #include "link_layer.h"
 #include "cs101_queue.h"
 #include "cs101_asdu_internal.h"
+#include "linked_list.h"
 
 #if ((CONFIG_USE_THREADS == 1) || (CONFIG_USE_SEMAPHORES == 1))
 #include "hal_thread.h"
@@ -88,6 +89,8 @@ struct sCS101_Slave
     bool isRunning;
     Thread workerThread;
 #endif
+
+    LinkedList plugins;
 };
 
 static void
@@ -138,6 +141,8 @@ GetClass2Data (void* parameter, Frame frame)
 static bool
 HandleReceivedData (void* parameter, uint8_t* msg, bool isBroadcast, int userDataStart, int userDataLength)
 {
+    UNUSED_PARAMETER(isBroadcast);
+
     CS101_Slave self = (CS101_Slave) parameter;
 
     CS101_ASDU asdu = CS101_ASDU_createFromBuffer(&(self->alParameters), msg + userDataStart, userDataLength);
@@ -220,30 +225,43 @@ static struct sIBalancedApplicationLayer cs101BalancedAppLayerInterface = {
  * IMasterConnection
  *******************************************/
 
-static void
+static bool
+isReady(IMasterConnection self)
+{
+    CS101_Slave slave = (CS101_Slave) self->object;
+
+    if (CS101_Slave_isClass1QueueFull(slave))
+        return false;
+    else
+        return true;
+}
+
+static bool
 sendASDU(IMasterConnection self, CS101_ASDU asdu)
 {
     CS101_Slave slave = (CS101_Slave) self->object;
 
     CS101_Slave_enqueueUserDataClass1(slave, asdu);
+
+    return true;
 }
 
-static void
+static bool
 sendACT_CON(IMasterConnection self, CS101_ASDU asdu, bool negative)
 {
     CS101_ASDU_setCOT(asdu, CS101_COT_ACTIVATION_CON);
     CS101_ASDU_setNegative(asdu, negative);
 
-    sendASDU(self, asdu);
+    return sendASDU(self, asdu);
 }
 
-static void
+static bool
 sendACT_TERM(IMasterConnection self, CS101_ASDU asdu)
 {
     CS101_ASDU_setCOT(asdu, CS101_COT_ACTIVATION_TERMINATION);
     CS101_ASDU_setNegative(asdu, false);
 
-    sendASDU(self, asdu);
+    return sendASDU(self, asdu);
 }
 
 static CS101_AppLayerParameters
@@ -269,7 +287,8 @@ static struct sCS101_AppLayerParameters defaultAppLayerParameters = {
 };
 
 CS101_Slave
-CS101_Slave_create(SerialPort serialPort, LinkLayerParameters llParameters, CS101_AppLayerParameters alParameters, IEC60870_LinkLayerMode linkLayerMode)
+CS101_Slave_createEx(SerialPort serialPort, LinkLayerParameters llParameters, CS101_AppLayerParameters alParameters, IEC60870_LinkLayerMode linkLayerMode,
+        int class1QueueSize, int class2QueueSize)
 {
     CS101_Slave self = (CS101_Slave) GLOBAL_MALLOC(sizeof(struct sCS101_Slave));
 
@@ -327,6 +346,7 @@ CS101_Slave_create(SerialPort serialPort, LinkLayerParameters llParameters, CS10
 
         }
 
+        self->iMasterConnection.isReady = isReady;
         self->iMasterConnection.sendASDU = sendASDU;
         self->iMasterConnection.sendACT_CON = sendACT_CON;
         self->iMasterConnection.sendACT_TERM = sendACT_TERM;
@@ -335,11 +355,19 @@ CS101_Slave_create(SerialPort serialPort, LinkLayerParameters llParameters, CS10
         self->iMasterConnection.getPeerAddress = NULL;
         self->iMasterConnection.object = self;
 
-        CS101_Queue_initialize(&(self->userDataClass1Queue), CS101_MAX_QUEUE_SIZE);
-        CS101_Queue_initialize(&(self->userDataClass2Queue), CS101_MAX_QUEUE_SIZE);
+        CS101_Queue_initialize(&(self->userDataClass1Queue), class1QueueSize);
+        CS101_Queue_initialize(&(self->userDataClass2Queue), class2QueueSize);
+
+        self->plugins = NULL;
     }
 
     return self;
+}
+
+CS101_Slave
+CS101_Slave_create(SerialPort serialPort, LinkLayerParameters llParameters, CS101_AppLayerParameters alParameters, IEC60870_LinkLayerMode linkLayerMode)
+{
+    return CS101_Slave_createEx(serialPort, llParameters, alParameters, linkLayerMode, CS101_MAX_QUEUE_SIZE, CS101_MAX_QUEUE_SIZE);
 }
 
 void
@@ -360,6 +388,16 @@ CS101_Slave_destroy(CS101_Slave self)
 
         GLOBAL_FREEMEM(self);
     }
+}
+
+void
+CS101_Slave_addPlugin(CS101_Slave self, CS101_SlavePlugin plugin)
+{
+    if (self->plugins == NULL)
+        self->plugins = LinkedList_create();
+
+    if (self->plugins)
+        LinkedList_add(self->plugins, plugin);
 }
 
 void
@@ -447,7 +485,20 @@ CS101_Slave_run(CS101_Slave self)
     else
         LinkLayerBalanced_run(self->balancedLinkLayer);
 
-    /* TODO handle file transmission */
+    /* call plugins */
+    if (self->plugins) {
+
+        LinkedList pluginElem = LinkedList_getNext(self->plugins);
+
+        while (pluginElem) {
+
+            CS101_SlavePlugin plugin = (CS101_SlavePlugin) LinkedList_getData(pluginElem);
+
+            plugin->runTask(plugin->parameter, &(self->iMasterConnection));
+
+            pluginElem = LinkedList_getNext(pluginElem);
+        }
+    }
 }
 
 #if (CONFIG_USE_THREADS == 1)
@@ -579,6 +630,27 @@ handleASDU(CS101_Slave self, CS101_ASDU asdu)
 {
     bool messageHandled = false;
 
+    /* call plugins */
+    if (self->plugins) {
+        LinkedList pluginElem = LinkedList_getNext(self->plugins);
+
+        while (pluginElem) {
+
+            CS101_SlavePlugin plugin = (CS101_SlavePlugin) LinkedList_getData(pluginElem);
+
+            CS101_SlavePlugin_Result result = plugin->handleAsdu(plugin->parameter, &(self->iMasterConnection), asdu);
+
+            if (result == CS101_PLUGIN_RESULT_HANDLED) {
+                return;
+            }
+            else if (result == CS101_PLUGIN_RESULT_INVALID_ASDU) {
+                DEBUG_PRINT("Invalid message");
+            }
+
+            pluginElem = LinkedList_getNext(pluginElem);
+        }
+    }
+
     uint8_t cot = CS101_ASDU_getCOT(asdu);
 
     switch (CS101_ASDU_getTypeID(asdu)) {
@@ -594,9 +666,14 @@ handleASDU(CS101_Slave self, CS101_ASDU asdu)
 
                 InterrogationCommand irc = (InterrogationCommand) CS101_ASDU_getElementEx(asdu, (InformationObject) &_io, 0);
 
-                if (self->interrogationHandler(self->interrogationHandlerParameter,
-                        &(self->iMasterConnection), asdu, InterrogationCommand_getQOI(irc)))
-                    messageHandled = true;
+                if (irc) {
+                    if (self->interrogationHandler(self->interrogationHandlerParameter,
+                            &(self->iMasterConnection), asdu, InterrogationCommand_getQOI(irc)))
+                        messageHandled = true;
+                }
+                else {
+                    DEBUG_PRINT("Invalid message");
+                }
             }
         }
         else
@@ -616,9 +693,15 @@ handleASDU(CS101_Slave self, CS101_ASDU asdu)
 
                 CounterInterrogationCommand cic = (CounterInterrogationCommand) CS101_ASDU_getElementEx(asdu, (InformationObject) &_io, 0);
 
-                if (self->counterInterrogationHandler(self->counterInterrogationHandlerParameter,
-                        &(self->iMasterConnection), asdu, CounterInterrogationCommand_getQCC(cic)))
-                    messageHandled = true;
+                if (cic) {
+                    if (self->counterInterrogationHandler(self->counterInterrogationHandlerParameter,
+                            &(self->iMasterConnection), asdu, CounterInterrogationCommand_getQCC(cic)))
+                        messageHandled = true;
+                }
+                else {
+                    DEBUG_PRINT("Invalid message");
+                    return;
+                }
             }
         }
         else
@@ -637,9 +720,14 @@ handleASDU(CS101_Slave self, CS101_ASDU asdu)
 
                 ReadCommand rc = (ReadCommand) CS101_ASDU_getElementEx(asdu, (InformationObject) &_io, 0);
 
-                if (self->readHandler(self->readHandlerParameter,
-                        &(self->iMasterConnection), asdu, InformationObject_getObjectAddress((InformationObject) rc)))
-                    messageHandled = true;
+                if (rc) {
+                    if (self->readHandler(self->readHandlerParameter,
+                            &(self->iMasterConnection), asdu, InformationObject_getObjectAddress((InformationObject) rc)))
+                        messageHandled = true;
+                }
+                else {
+                    DEBUG_PRINT("Invalid message");
+                }
             }
         }
         else
@@ -659,15 +747,20 @@ handleASDU(CS101_Slave self, CS101_ASDU asdu)
 
                 ClockSynchronizationCommand csc = (ClockSynchronizationCommand) CS101_ASDU_getElementEx(asdu, (InformationObject) &_io, 0);
 
-                if (self->clockSyncHandler(self->clockSyncHandlerParameter,
-                        &(self->iMasterConnection), asdu, ClockSynchronizationCommand_getTime(csc)))
-                    messageHandled = true;
+                if (csc) {
+                    if (self->clockSyncHandler(self->clockSyncHandlerParameter,
+                            &(self->iMasterConnection), asdu, ClockSynchronizationCommand_getTime(csc)))
+                        messageHandled = true;
 
-                if (messageHandled) {
-                    /* send ACT-CON message */
-                    CS101_ASDU_setCOT(asdu, CS101_COT_ACTIVATION_CON);
+                    if (messageHandled) {
+                        /* send ACT-CON message */
+                        CS101_ASDU_setCOT(asdu, CS101_COT_ACTIVATION_CON);
 
-                    CS101_Slave_enqueueUserDataClass1(self, asdu);
+                        CS101_Slave_enqueueUserDataClass1(self, asdu);
+                    }
+                }
+                else {
+                    DEBUG_PRINT("Invalid message");
                 }
             }
         }
@@ -728,11 +821,14 @@ handleASDU(CS101_Slave self, CS101_ASDU asdu)
 
                 DelayAcquisitionCommand dac = (DelayAcquisitionCommand) CS101_ASDU_getElementEx(asdu, (InformationObject) &_io, 0);
 
-                if (self->delayAcquisitionHandler(self->delayAcquisitionHandlerParameter,
-                        &(self->iMasterConnection), asdu, DelayAcquisitionCommand_getDelay(dac)))
-                    messageHandled = true;
-
-                DelayAcquisitionCommand_destroy(dac);
+                if (dac) {
+                    if (self->delayAcquisitionHandler(self->delayAcquisitionHandlerParameter,
+                            &(self->iMasterConnection), asdu, DelayAcquisitionCommand_getDelay(dac)))
+                        messageHandled = true;
+                }
+                else {
+                    DEBUG_PRINT("Invalid message");
+                }
             }
         }
         else

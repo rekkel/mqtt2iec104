@@ -10,34 +10,18 @@
 #define CONFIG_DEBUG_OUTPUT 0
 
 /**
- * Configure CS104 slave to allocate memory from static memory pool (don't use dynamic memory)
+ * Define the maximum slave message queue size (for CS 101)
  *
- * Note: This setting will create different memory pools for objects like client connections,
- * ASDU queues, and slave instances. The following settings have to be defined also:
- * - \ref CONFIG_CS104_SLAVE_POOL_SIZE (number of slave instances)
- * - \ref CONFIG_CS104_MESSAGE_QUEUE_POOL_SIZE (message queue pool size)
- * - \ref CONFIG_CS104_MESSAGE_QUEUE_SIZE (size of ASDU message queue)
- * - \ref CONFIG_CS104_MESSAGE_QUEUE_HIGH_PRIO_SIZE (size of high priority message queue)
- * - \ref CONFIG_CS104_MAX_K_BUFFER_SIZE (size of k-buffer - restricts the maximum value of the k parameter!)
- *
+ * When set to -1 the message queue size is not limited can be set by the application
  */
-#define CONFIG_CS104_SLAVE_POOL 0
-
-/**
- * Define the number of slave instances that are available in the pool
- */
-#define CONFIG_CS104_SLAVE_POOL_SIZE 1
-
-/**
- * Define the number of message queues in the pool to be shared between different slaves
- */
-#define CONFIG_CS104_MESSAGE_QUEUE_POOL_SIZE 1
+#define CONFIG_SLAVE_MESSAGE_QUEUE_SIZE -1
 
 /**
  * Define the default size for the slave (outstation) message queue. This is used also
  * to buffer ASDUs in the case when the connection is lost.
  *
- * For each queued message about 256 bytes of memory are required.
+ * For each queued message a maximum of 256 bytes of memory are required. Usually messages are
+ * smaller so more then thus number of messages can be stored in the message queue
  */
 #define CONFIG_CS104_MESSAGE_QUEUE_SIZE 100
 
@@ -51,14 +35,6 @@
 #define CONFIG_CS104_MESSAGE_QUEUE_HIGH_PRIO_SIZE 50
 
 /**
- * \brief This parameter restricts the k-buffer size when \ref CONFIG_CS104_SLAVE_POOL is enabled
- *
- * The actual size of the k-buffer (corresponding to the APCI parameter k) is defined by the runtime parameter.
- * However the runtime parameter is restricted to the maximum of this value.
- */
-#define CONFIG_CS104_MAX_K_BUFFER_SIZE 30
-
-/**
  * Compile the library to use threads. This will require semaphore support
  */
 #define CONFIG_USE_THREADS 1
@@ -68,21 +44,6 @@
  * Required when CONFIG_USE_THREADS = 1.
  */
 #define CONFIG_USE_SEMAPHORES 1
-
-/**
- * Use a separate thread to call the callback functions. This allows the user
- * to have a more natural program flow in the callback function. Otherwise callback
- * functions have to return immediately and send functions called from the callback
- * may not work when the send message queue is full.
- */
-#define CONFIG_SLAVE_USE_SEPARATE_CALLBACK_THREAD 0
-
-/**
- * Queue to store received ASDUs before passing them to the user provided callback.
- */
-#define CONFIG_SLAVE_SEPARATE_CALLBACK_THREAD_QUEUE_SIZE 12
-
-
 
 /**
  * Compile library with support for SINGLE_REDUNDANCY_GROUP server mode (only CS104 server)

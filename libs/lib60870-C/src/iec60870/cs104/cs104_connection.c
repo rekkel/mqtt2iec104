@@ -73,6 +73,9 @@ struct sCS104_Connection {
     struct sCS104_APCIParameters parameters;
     struct sCS101_AppLayerParameters alParameters;
 
+    uint8_t recvBuffer[260];
+    int recvBufPos;
+
     int connectTimeoutInMs;
     uint8_t sMessage[6];
 
@@ -268,6 +271,7 @@ static void
 resetConnection(CS104_Connection self)
 {
     self->connectTimeoutInMs = self->parameters.t0 * 1000;
+    self->recvBufPos = 0;
 
     self->running = false;
     self->failure = false;
@@ -459,75 +463,99 @@ CS104_Connection_getAPCIParameters(CS104_Connection self)
     return &(self->parameters);
 }
 
-#if (CONFIG_CS104_SUPPORT_TLS == 1)
+/**
+ * \return number of bytes read, or -1 in case of an error
+ */
 static int
-receiveMessageTlsSocket(TLSSocket socket, uint8_t* buffer)
-{
-    int readFirst = TLSSocket_read(socket, buffer, 1);
-
-    if (readFirst < 1)
-        return readFirst;
-
-    if (buffer[0] != 0x68)
-        return -1; /* message error */
-
-    if (TLSSocket_read(socket, buffer + 1, 1) != 1)
-        return -1;
-
-    int length = buffer[1];
-
-    /* read remaining frame */
-    if (TLSSocket_read(socket, buffer + 2, length) != length)
-        return -1;
-
-    return length + 2;
-}
-#endif /*  (CONFIG_CS104_SUPPORT_TLS == 1) */
-
-static int
-receiveMessageSocket(Socket socket, uint8_t* buffer)
-{
-    int readFirst = Socket_read(socket, buffer, 1);
-
-    if (readFirst < 1)
-        return readFirst;
-
-    if (buffer[0] != 0x68)
-        return -1; /* message error */
-
-    if (Socket_read(socket, buffer + 1, 1) != 1)
-        return -1;
-
-    int length = buffer[1];
-
-    /* read remaining frame */
-    if (Socket_read(socket, buffer + 2, length) != length)
-        return -1;
-
-    return length + 2;
-}
-
-static int
-receiveMessage(CS104_Connection self, uint8_t* buffer)
+readFromSocket(CS104_Connection self, uint8_t* buffer, int size)
 {
 #if (CONFIG_CS104_SUPPORT_TLS == 1)
     if (self->tlsSocket != NULL)
-        return receiveMessageTlsSocket(self->tlsSocket, buffer);
+        return TLSSocket_read(self->tlsSocket, buffer, size);
     else
-        return receiveMessageSocket(self->socket, buffer);
+        return Socket_read(self->socket, buffer, size);
 #else
-    return receiveMessageSocket(self->socket, buffer);
+    return Socket_read(self->socket, buffer, size);
 #endif
 }
 
+/**
+ * \brief Read message part into receive buffer
+ *
+ * \return -1 in case of an error, 0 when no complete message can be read, > 0 when a complete message is in buffer
+ */
+static int
+receiveMessage(CS104_Connection self)
+{
+    uint8_t* buffer = self->recvBuffer;
+    int bufPos = self->recvBufPos;
+
+    /* read start byte */
+    if (bufPos == 0) {
+        int readFirst = readFromSocket(self, buffer, 1);
+
+        if (readFirst < 1)
+            return readFirst;
+
+        if (buffer[0] != 0x68)
+            return -1; /* message error */
+
+        bufPos++;
+    }
+
+    /* read length byte */
+    if (bufPos == 1)  {
+
+        int readCnt = readFromSocket(self, buffer + 1, 1);
+
+        if (readCnt < 0) {
+            self->recvBufPos = 0;
+            return -1;
+        }
+        else if (readCnt == 0) {
+            self->recvBufPos = 1;
+            return 0;
+        }
+
+        bufPos++;
+    }
+
+    /* read remaining frame */
+    if (bufPos > 1) {
+        int length = buffer[1];
+
+        int remainingLength = length - bufPos + 2;
+
+        int readCnt = readFromSocket(self, buffer + bufPos, remainingLength);
+
+        if (readCnt == remainingLength) {
+            self->recvBufPos = 0;
+            return length + 2;
+        }
+        else if (readCnt == -1) {
+            self->recvBufPos = 0;
+            return -1;
+        }
+        else {
+            self->recvBufPos = bufPos + readCnt;
+            return 0;
+        }
+    }
+
+    self->recvBufPos = bufPos;
+    return 0;
+}
 
 static bool
-checkConfirmTimeout(CS104_Connection self, long currentTime)
+checkConfirmTimeout(CS104_Connection self, uint64_t currentTime)
 {
-    if ((currentTime - self->lastConfirmationTime) >= (uint32_t) (self->parameters.t2 * 1000))
-        return true;
-    else
-        return false;
+    if (currentTime > self->lastConfirmationTime) {
+        if ((currentTime - self->lastConfirmationTime) >= (uint32_t) (self->parameters.t2 * 1000)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static bool
@@ -673,9 +701,11 @@ handleTimeouts(CS104_Connection self)
     Semaphore_wait(self->sentASDUsLock);
 #endif
     if (self->oldestSentASDU != -1) {
-        if ((currentTime - self->sentASDUs[self->oldestSentASDU].sentTime) >= (uint64_t) (self->parameters.t1 * 1000)) {
-            DEBUG_PRINT("I message timeout\n");
-            retVal = false;
+        if (currentTime > self->sentASDUs[self->oldestSentASDU].sentTime) {
+            if ((currentTime - self->sentASDUs[self->oldestSentASDU].sentTime) >= (uint64_t) (self->parameters.t1 * 1000)) {
+                DEBUG_PRINT("I message timeout\n");
+                retVal = false;
+            }
         }
     }
 #if (CONFIG_USE_SEMAPHORES == 1)
@@ -698,99 +728,102 @@ handleConnection(void* parameter)
 
     self->socket = TcpSocket_create();
 
-    Socket_setConnectTimeout(self->socket, self->connectTimeoutInMs);
+    if (self->socket) {
+        Socket_setConnectTimeout(self->socket, self->connectTimeoutInMs);
 
-    if (Socket_connect(self->socket, self->hostname, self->tcpPort)) {
+        if (Socket_connect(self->socket, self->hostname, self->tcpPort)) {
 
 #if (CONFIG_CS104_SUPPORT_TLS == 1)
-        if (self->tlsConfig != NULL) {
-            self->tlsSocket = TLSSocket_create(self->socket, self->tlsConfig, false);
+            if (self->tlsConfig != NULL) {
+                self->tlsSocket = TLSSocket_create(self->socket, self->tlsConfig, false);
 
-            if (self->tlsSocket)
-                self->running = true;
+                if (self->tlsSocket)
+                    self->running = true;
+                else
+                    self->failure = true;
+            }
             else
-                self->failure = true;
-        }
-        else
-            self->running = true;
+                self->running = true;
 #else
-        self->running = true;
+            self->running = true;
 #endif
 
-        if (self->running) {
+            if (self->running) {
 
-            /* Call connection handler */
-            if (self->connectionHandler != NULL)
-                self->connectionHandler(self->connectionHandlerParameter, self, CS104_CONNECTION_OPENED);
+                /* Call connection handler */
+                if (self->connectionHandler != NULL)
+                    self->connectionHandler(self->connectionHandlerParameter, self, CS104_CONNECTION_OPENED);
 
-            HandleSet handleSet = Handleset_new();
+                HandleSet handleSet = Handleset_new();
 
-            bool loopRunning = true;
+                bool loopRunning = true;
 
-            while (loopRunning) {
+                while (loopRunning) {
 
-                uint8_t buffer[300];
+                    Handleset_reset(handleSet);
+                    Handleset_addSocket(handleSet, self->socket);
 
-                Handleset_reset(handleSet);
-                Handleset_addSocket(handleSet, self->socket);
+                    if (Handleset_waitReady(handleSet, 100)) {
+                        int bytesRec = receiveMessage(self);
 
-                if (Handleset_waitReady(handleSet, 100)) {
-                    int bytesRec = receiveMessage(self, buffer);
-
-                    if (bytesRec == -1) {
-                        loopRunning = false;
-                        self->failure = true;
-                    }
-
-                    if (bytesRec > 0) {
-
-                        if (self->rawMessageHandler)
-                            self->rawMessageHandler(self->rawMessageHandlerParameter, buffer, bytesRec, false);
-
-                        if (checkMessage(self, buffer, bytesRec) == false) {
-                            /* close connection on error */
+                        if (bytesRec == -1) {
                             loopRunning = false;
                             self->failure = true;
                         }
+
+                        if (bytesRec > 0) {
+
+                            if (self->rawMessageHandler)
+                                self->rawMessageHandler(self->rawMessageHandlerParameter, self->recvBuffer, bytesRec, false);
+
+                            if (checkMessage(self, self->recvBuffer, bytesRec) == false) {
+                                /* close connection on error */
+                                loopRunning = false;
+                                self->failure = true;
+                            }
+                        }
+
+                        if (self->unconfirmedReceivedIMessages >= self->parameters.w) {
+                            self->lastConfirmationTime = Hal_getTimeInMs();
+                            self->unconfirmedReceivedIMessages = 0;
+                            self->timeoutT2Trigger = false;
+                            sendSMessage(self);
+                        }
                     }
 
-                    if (self->unconfirmedReceivedIMessages >= self->parameters.w) {
-                        self->lastConfirmationTime = Hal_getTimeInMs();
-                        self->unconfirmedReceivedIMessages = 0;
-                        self->timeoutT2Trigger = false;
-                        sendSMessage(self);
-                    }
+                    if (handleTimeouts(self) == false)
+                        loopRunning = false;
+
+                    if (self->close)
+                        loopRunning = false;
                 }
 
-                if (handleTimeouts(self) == false)
-                    loopRunning = false;
+                Handleset_destroy(handleSet);
 
-                if (self->close)
-                    loopRunning = false;
+                /* Call connection handler */
+                if (self->connectionHandler != NULL)
+                    self->connectionHandler(self->connectionHandlerParameter, self, CS104_CONNECTION_CLOSED);
+
             }
-
-            Handleset_destroy(handleSet);
-
-            /* Call connection handler */
-            if (self->connectionHandler != NULL)
-                self->connectionHandler(self->connectionHandlerParameter, self, CS104_CONNECTION_CLOSED);
-
         }
+        else {
+            self->failure = true;
+        }
+
+    #if (CONFIG_CS104_SUPPORT_TLS == 1)
+        if (self->tlsSocket)
+            TLSSocket_close(self->tlsSocket);
+    #endif
+
+        Socket_destroy(self->socket);
     }
     else {
-        self->failure = true;
+    	DEBUG_PRINT("Failed to create socket\n");
     }
 
-#if (CONFIG_CS104_SUPPORT_TLS == 1)
-    if (self->tlsSocket)
-        TLSSocket_close(self->tlsSocket);
-#endif
-
-    Socket_destroy(self->socket);
+    self->running = false;
 
     DEBUG_PRINT("EXIT CONNECTION HANDLING THREAD\n");
-
-    self->running = false;
 
     return NULL;
 }

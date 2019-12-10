@@ -1,5 +1,5 @@
 /*
- *  Copyright 2016, 2017 MZ Automation GmbH
+ *  Copyright 2016-2019 MZ Automation GmbH
  *
  *  This file is part of lib60870-C
  *
@@ -21,6 +21,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "iec60870_common.h"
 #include "information_objects_internal.h"
@@ -39,6 +40,7 @@ struct sASDUFrame {
 static void
 asduFrame_destroy(Frame self)
 {
+    UNUSED_PARAMETER(self);
 }
 
 static void
@@ -172,6 +174,30 @@ CS101_ASDU_createFromBuffer(CS101_AppLayerParameters parameters, uint8_t* msg, i
     return self;
 }
 
+uint8_t*
+CS101_ASDU_getPayload(CS101_ASDU self)
+{
+    return self->payload;
+}
+
+int
+CS101_ASDU_getPayloadSize(CS101_ASDU self)
+{
+    return self->payloadSize;
+}
+
+bool
+CS101_ASDU_addPayload(CS101_ASDU self, uint8_t* buffer, int size)
+{
+    if (self->payloadSize + self->asduHeaderLength + size <= 256) {
+        memcpy(self->payload + self->payloadSize, buffer, size);
+        self->payloadSize += size;
+        return true;
+    }
+    else
+        return false;
+}
+
 static int
 getFirstIOA(CS101_ASDU self)
 {
@@ -198,26 +224,30 @@ CS101_ASDU_addInformationObject(CS101_ASDU self, InformationObject io)
 
     bool encoded = false;
 
-
     int numberOfElements = CS101_ASDU_getNumberOfElements(self);
 
     if (numberOfElements == 0) {
-        ((CS101_StaticASDU)self)->encodedData[0] = (uint8_t) InformationObject_getType(io);
+        self->asdu[0] = (uint8_t) InformationObject_getType(io);
 
         encoded = InformationObject_encode(io, (Frame) &asduFrame, self->parameters, false);
     }
     else if (numberOfElements < 0x7f) {
 
-        if (CS101_ASDU_isSequence(self)) {
+        /* Check if type of information object is matching ASDU type */
 
-            /* check that new information object has correct IOA */
-            if (InformationObject_getObjectAddress(io) == (getFirstIOA(self) + CS101_ASDU_getNumberOfElements(self)))
-                encoded = InformationObject_encode(io, (Frame) &asduFrame, self->parameters, true);
-            else
-                encoded = false;
-        }
-        else {
-            encoded = InformationObject_encode(io, (Frame) &asduFrame, self->parameters, false);;
+        if (self->asdu[0] == (uint8_t) InformationObject_getType(io)) {
+
+            if (CS101_ASDU_isSequence(self)) {
+
+                /* check that new information object has correct IOA */
+                if (InformationObject_getObjectAddress(io) == (getFirstIOA(self) + CS101_ASDU_getNumberOfElements(self)))
+                    encoded = InformationObject_encode(io, (Frame) &asduFrame, self->parameters, true);
+                else
+                    encoded = false;
+            }
+            else {
+                encoded = InformationObject_encode(io, (Frame) &asduFrame, self->parameters, false);;
+            }
         }
     }
 
@@ -276,7 +306,7 @@ CS101_ASDU_getOA(CS101_ASDU self)
     if (self->parameters->sizeOfCOT < 2)
         return -1;
     else
-        return (int) self->asdu[4];
+        return (int) self->asdu[3];
 }
 
 CS101_CauseOfTransmission
@@ -343,6 +373,12 @@ CS101_ASDU_getTypeID(CS101_ASDU self)
     return (TypeID) (self->asdu[0]);
 }
 
+void
+CS101_ASDU_setTypeID(CS101_ASDU self, IEC60870_5_TypeID typeId)
+{
+    self->asdu[0] = (uint8_t) typeId;
+}
+
 bool
 CS101_ASDU_isSequence(CS101_ASDU self)
 {
@@ -352,10 +388,27 @@ CS101_ASDU_isSequence(CS101_ASDU self)
         return false;
 }
 
+void
+CS101_ASDU_setSequence(CS101_ASDU self, bool isSequence)
+{
+    if (isSequence)
+        self->asdu[1] |= 0x80;
+    else
+        self->asdu[1] &= 0x7f;
+}
+
 int
 CS101_ASDU_getNumberOfElements(CS101_ASDU self)
 {
     return (self->asdu[1] & 0x7f);
+}
+
+void
+CS101_ASDU_setNumberOfElements(CS101_ASDU self, int numberOfElements)
+{
+    uint8_t noe = ((uint8_t) numberOfElements) & 0x7f;
+
+    self->asdu[1] |= noe;
 }
 
 InformationObject
