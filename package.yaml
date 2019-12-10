@@ -1,0 +1,24 @@
+descriptor-schema-version: "2.7"
+
+info:
+  name: "MQTT2IEC104"
+  description: "MQTT client broker for arm64v8 to IEC104 server"
+  version: "1.0.10"
+  author-link: "http://www.modbus.com"
+  author-name: "Rick Ekkelboom"
+
+app:
+  cpuarch: "aarch64"
+  type: "docker"
+  resources:
+    profile: c1.tiny
+    network:
+      -
+        interface-name: eth0
+        ports:
+          tcp: ["2404"]
+
+  startup:
+    rootfs: rootfs.tar
+    target: ["/usr/mqtt2iec104/cs104_redundancy_server"]
+
