@@ -233,7 +233,7 @@ main(int argc, char** argv)
     const char* topic;
     const char* topic2;
     /*addr   = "10.130.1.202";*/
-    addr   = "192.168.43.221";
+    addr   = "192.168.2.15";
     port   = "1883";
     topic  = "modbus/#";
     topic2 = "channels/#";
