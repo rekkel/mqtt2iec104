@@ -233,7 +233,7 @@ main(int argc, char** argv)
     const char* topic;
     const char* topic2;
     /*addr   = "10.130.1.202";*/
-    addr   = "192.168.2.15";
+    addr   = "192.168.43.221";
     port   = "1883";
     topic  = "modbus/#";
     topic2 = "channels/#";
@@ -520,7 +520,7 @@ void publish_callback(void** unused, struct mqtt_response_publish *published)
 		}
 
 		strcpy(s_compare,s);
-    }else if(!strcmp( topic_name,"channels/396640/publish/1234567890")){
+    }else if(!strcmp( topic_name,"channels/36000/data")){
 		  new_meas = 1;
 		  printf("topic %s\n",topic_name);
 
@@ -542,6 +542,7 @@ void publish_callback(void** unused, struct mqtt_response_publish *published)
 		  pow_a = atof(power[0]);
 		  pow_l = atof(power[1]);
 
+		  printf("power_a: %f, power_l: %f\n",pow_a,pow_l);
    
 
 

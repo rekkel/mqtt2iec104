@@ -3,7 +3,7 @@ descriptor-schema-version: "2.7"
 info:
   name: "MQTT2IEC104"
   description: "MQTT client broker for arm64v8 to IEC104 server"
-  version: "1.0.11"
+  version: "1.0.13"
   author-link: "http://www.modbus.com"
   author-name: "Rick Ekkelboom"
 
