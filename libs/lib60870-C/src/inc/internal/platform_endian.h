@@ -23,7 +23,7 @@
 #define ENDIAN_H_
 
 #include "lib60870_config.h"
-
+#define PLATFORM_IS_BIGENDIAN 0
 #ifndef PLATFORM_IS_BIGENDIAN
 #ifdef __GNUC__
 #ifdef __BYTE_ORDER__
